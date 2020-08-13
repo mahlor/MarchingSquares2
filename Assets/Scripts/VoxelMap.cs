@@ -1,13 +1,7 @@
 ﻿
+using JetBrains.Annotations;
 using UnityEngine;
-/*using UnityEngine.UI;
-using System.IO;
-using System.Collections;
-using System.Collections.Generic;
-using Unity.Mathematics;
-using UnityEditorInternal;
-using System.Net.NetworkInformation;
-*/
+using UnityEngine.UIElements;
 //https://catlikecoding.com/unity/tutorials/marching-squares/
 
 public class VoxelMap : MonoBehaviour
@@ -16,19 +10,27 @@ public class VoxelMap : MonoBehaviour
     [SerializeField] int voxelResolution = 8;
     [SerializeField] int chunkResolution = 2;
     [SerializeField] VoxelGrid voxelGridPrefab;
+
     private VoxelGrid[] chunks;
     private float chunkSize, voxelSize, halfSize;
     private static string[] fillTypeNames = { "Filled", "Empty" };
     private static string[] radiusNames = { "0", "1", "2", "3", "4", "5" };
-    private int fillTypeIndex, radiusIndex;
-
-    private void OnGUI()
+    private int fillTypeIndex, radiusIndex, stencilIndex;
+    private static string[] stencilNames = { "Square", "Circle" };
+    private VoxelStencil[] stencils =
     {
+        new VoxelStencil(),
+        new VoxelStencilCircle()
+    };
+    private void OnGUI()
+{
         GUILayout.BeginArea(new Rect(4f, 4f, 150f, 500f));
         GUILayout.Label("Fill Type");
         fillTypeIndex = GUILayout.SelectionGrid(fillTypeIndex, fillTypeNames, 2);
         GUILayout.Label("Radius");
         radiusIndex = GUILayout.SelectionGrid(radiusIndex, radiusNames, 6);
+        GUILayout.Label("Stencil");
+        stencilIndex = GUILayout.SelectionGrid(stencilIndex, stencilNames, 2);
         GUILayout.EndArea();
     }
 
@@ -57,6 +59,16 @@ public class VoxelMap : MonoBehaviour
         chunk.transform.parent = transform;
         chunk.transform.localPosition = new Vector3(x * chunkSize - halfSize, y * chunkSize - halfSize);
         chunks[i] = chunk;
+        if (x > 0)
+            chunks[i - 1].xNeighbor = chunk;
+        if (y > 0)
+        {
+            chunks[i - chunkResolution].yNeighbor = chunk;
+            if (x > 0)
+            {
+                chunks[i - chunkResolution - 1].xyNeighbor = chunk;
+            }
+        }
         
     }
 
@@ -85,11 +97,37 @@ public class VoxelMap : MonoBehaviour
     {
         int centerX = (int)((point.x + halfSize) / voxelSize);
         int centerY = (int)((point.y + halfSize) / voxelSize);
-        int chunkX = centerX / voxelResolution;
-        int chunkY = centerY / voxelResolution;
-        VoxelStencil activeStencil = new VoxelStencil();
+        int xStart = (centerX - radiusIndex - 1) / voxelResolution;
+        if (xStart < 0)
+            xStart = 0;
+        int xEnd = (centerX + radiusIndex) / voxelResolution;
+        if (xEnd >= chunkResolution)
+            xEnd = chunkResolution - 1;
+        int yStart = (centerY - radiusIndex - 1) / voxelResolution;
+        if (yStart < 0)
+            yStart = 0;
+        int yEnd = (centerY + radiusIndex) / voxelResolution;
+        if (yEnd >= chunkResolution)
+            yEnd = chunkResolution - 1;
+
+
+        VoxelStencil activeStencil = stencils[stencilIndex];
         activeStencil.Initialize(fillTypeIndex == 0, radiusIndex);
-        activeStencil.SetCenter(centerX, centerY);
-        chunks[chunkY * chunkResolution + chunkX].Apply(activeStencil);
+
+        int voxelYOffset = yEnd * voxelResolution;
+        for (int y = yEnd; y >= yStart; y--)
+        {
+            int i = y * chunkResolution + xEnd;
+            int voxelXOffset = xEnd * voxelResolution;
+            for (int x = xEnd; x >= xStart; x--, i--)
+            {
+                activeStencil.SetCenter(centerX - voxelXOffset, centerY - voxelYOffset);
+                chunks[i].Apply(activeStencil);
+                voxelXOffset -= voxelResolution;
+            }
+            voxelYOffset -= voxelResolution;
+
+        }
+
     }
 }

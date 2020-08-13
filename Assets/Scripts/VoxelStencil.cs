@@ -6,27 +6,27 @@ using UnityEngine;
 
 public class VoxelStencil
 {
-    private bool fillType;
-    private int centerX, centerY, radius;
+    protected bool fillType;
+    protected int centerX, centerY, radius;
 
 
-    public void Initialize (bool fillType, int radius)
+    public virtual void Initialize (bool fillType, int radius)
     {
         this.fillType = fillType;
         this.radius = radius;
     }
-    public void SetCenter (int x, int y)
+	public virtual void SetCenter (int x, int y)
     {
         centerX = x;
         centerY = y;
 
     }
-    public bool Apply (int x, int y)
+	public virtual bool Apply (int x, int y, bool voxel)
     {
         return fillType;
     }
 
-	public int XStart
+	public virtual int XStart
 	{
 		get
 		{
@@ -34,7 +34,7 @@ public class VoxelStencil
 		}
 	}
 
-	public int XEnd
+	public virtual int XEnd
 	{
 		get
 		{
@@ -42,16 +42,16 @@ public class VoxelStencil
 		}
 	}
 
-	public int YStart
+	public virtual int YStart
 	{
 		get
 		{
 			return centerY - radius;
-		}
+        }
 	}
 
-	public int YEnd
-	{
+    public virtual int YEnd
+    {
 		get
 		{
 			return centerY + radius;
